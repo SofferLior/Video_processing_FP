@@ -9,7 +9,6 @@ except ImportError:
     fortran_lib = False
 import math
 import heapq
-from scipy.misc import imread
 import matplotlib.pyplot as plt
 
 
