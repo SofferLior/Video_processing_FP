@@ -8,10 +8,10 @@ from video_matting import video_matting
 from video_stabilization import stabilize_video
 
 
-def main():
+def main(args):
 
-    input_video_path = os.path.join(args.input_video_path, 'INPUT.avi')
-    new_background = os.path.join(args.input_video_path, 'background.jpg')
+    input_video_path = os.path.join(args.input_folder_path, 'INPUT.avi')
+    new_background = os.path.join(args.input_folder_path, 'background.jpg')
 
     # load video and its data
     cap, video_data = load_video(input_video_path)
