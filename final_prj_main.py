@@ -20,7 +20,7 @@ def main(args):
     stabilized_video = stabilize_video(cap, video_data)
 
     # subtract background
-    obj_video = background_subtraction(stabilized_video, video_data)
+    obj_video = background_subtraction(stabilized_video, video_data, args.output_folder_path)
 
     # video matting
     new_background_video = video_matting(obj_video, new_background, video_data)
@@ -37,7 +37,7 @@ def load_video(input_video_path):
 
     video_data = dict()
     # Get frame count
-    video_data['n_frames'] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    video_data['frames_num'] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
     # Get width and height of video stream
     video_data['w'] = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
