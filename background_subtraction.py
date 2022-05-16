@@ -93,7 +93,7 @@ def background_subtraction(cap, video_data, output_path, time_window_size=70, su
                 out_bg_only.write(cur_median_window_frame_rgb)
             continue
 
-        cur_binary_fg_mask, cur_extracted_fg_frame_rgb = substract_single_image(cur_frame_rgb, cur_median_window_frame_rgb, subtraction_th, debug=True)
+        cur_binary_fg_mask, cur_extracted_fg_frame_rgb = substract_single_image(cur_frame_rgb, cur_median_window_frame_rgb, threshold=100, debug=True)
         out_extracted_fg.write(cur_extracted_fg_frame_rgb)
         out_binary.write(cur_binary_fg_mask)
         out_bg_only.write(cur_median_window_frame_rgb)
