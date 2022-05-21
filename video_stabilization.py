@@ -8,7 +8,8 @@ debug_flag = False
 
 
 def find_features_and_descriptor(grey_im):
-    features = cv2.goodFeaturesToTrack(grey_im, 200, 0.01, 30, 3)
+    # goodFeaturesToTrack Params: maximum number of features, quality level, minimum possible Euclidean distance
+    features = cv2.goodFeaturesToTrack(grey_im, 500, 0.2, 20)
     features=features.reshape(features.shape[0], 2)
     if debug_flag:
         plt.figure()
@@ -102,7 +103,7 @@ def stabilize_video(cap, video_data):
             matches = matcher.match(prev_des, cur_des)
             matches = sorted(matches, key= lambda x:x.distance)
             if debug_flag:
-                matches_im = cv2.drawMatches(prev_grey,prev_kp,cur_grey,cur_kp,matches[:50],None, flags=2)
+                matches_im = cv2.drawMatches(prev_grey,prev_kp,cur_grey,cur_kp,matches[:100],None, flags=2)
                 plt.figure()
                 plt.imshow(matches_im)
                 plt.show()
