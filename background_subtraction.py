@@ -1,3 +1,6 @@
+# TODO:
+#  1. extract the walking person - extracted.avi
+#  2. binary mask of the walking person - binary.avi
 import os
 from collections import deque
 
@@ -72,7 +75,7 @@ def background_subtraction(cap, video_data, output_path, time_window_size=70, su
         ret, cur_frame_rgb = cap.read()
         if ret is False:
             break
-            
+
         if curr_frame < time_window_size:
             continue
 
