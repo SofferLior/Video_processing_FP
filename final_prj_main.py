@@ -19,18 +19,21 @@ def main(args):
 
     input_video_path = os.path.join(args.input_folder_path, 'INPUT.avi')
     new_background = os.path.join(args.input_folder_path, 'background.jpg')
+    # todo: change this not to be duplicate
+    stabilized_video_path = os.path.join('Output', 'stabilized.avi')
 
-    # load video and its data
-    cap, video_data = load_video(input_video_path)
-
-    # send to video stabilization
-    start_time = time.time()
-    stabilized_video = stabilize_video(cap, video_data)
-    end_time = time.time()
-    timing["time_to_stabilize"] = end_time - start_time
+    # # load video and its data
+    # cap, video_data = load_video(input_video_path)
+    #
+    # # send to video stabilization
+    # start_time = time.time()
+    # stabilized_video = stabilize_video(cap, video_data)
+    # end_time = time.time()
+    # timing["time_to_stabilize"] = end_time - start_time
 
     # subtract background
-    obj_video = background_subtraction(stabilized_video, video_data, args.output_folder_path)
+    stabilized_video_capture, video_data = load_video(stabilized_video_path)
+    obj_video = background_subtraction(stabilized_video_capture, video_data, args.output_folder_path)
 
     # video matting
     new_background_video = video_matting(obj_video, new_background, video_data)

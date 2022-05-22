@@ -88,7 +88,7 @@ def stabilize_video(cap, video_data):
         prev_grey = cv2.cvtColor(prev, cv2.COLOR_BGR2GRAY)
         prev_kp, prev_des = find_features_and_descriptor(prev_grey)
         H_cum = np.eye(3)
-        for frame in range(video_data['n_frames']-1):
+        for frame in range(video_data['frames_num']-1):
             # 1. read next frame
             ret, cur = cap.read()
             if not ret:
