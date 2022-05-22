@@ -2,7 +2,8 @@ import argparse
 import os
 import cv2
 
-from background_subtraction import background_subtraction
+# from background_subtraction import background_subtraction
+from background_subtraction_opencv import background_subtraction
 from obj_tracking import track_obj
 from video_matting import video_matting
 from video_stabilization import stabilize_video
