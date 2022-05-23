@@ -39,7 +39,9 @@ def main(args):
     new_background_video = video_matting(obj_video, new_background, video_data)
 
     # object tracking
-    video_w_tracking = track_obj(new_background_video, video_data)
+    # TODO: change back to take the new_background_video
+    binary_video_path = os.path.join('Output', 'binary_foreground.avi')
+    video_w_tracking = track_obj(stabilized_video_path, binary_video_path,  video_data)
 
     with open(timing_path, 'w') as f:
         json.dump(timing, f, indent=4)
@@ -91,6 +93,6 @@ def test_json(timing_path):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--input_folder_path', help='path to the input folder', default='Inputs')
-    parser.add_argument('--output_folder_path', help='path to the output folder to save processed video', default='Outputs')
+    parser.add_argument('--output_folder_path', help='path to the output folder to save processed video', default='Output')
     args = parser.parse_args()
     main(args)
