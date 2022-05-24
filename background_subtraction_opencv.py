@@ -54,3 +54,5 @@ def background_subtraction(cap, video_data, output_path, time_window_size=70, su
 
     plt.show(block=False)
     a=0
+
+    return
