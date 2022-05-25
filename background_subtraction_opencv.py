@@ -28,16 +28,15 @@ def background_subtraction(cap, video_data, output_path, time_window_size=70, su
 
         fgMask = backSub.apply(cur_frame_rgb)
         a, fg_binary = cv2.threshold(fgMask,200,255,cv2.THRESH_BINARY)
-        kernel = np.ones((5, 5), np.uint8)
+        kernel = np.ones((8, 8), np.uint8)
         fg_mask_opened = cv2.morphologyEx(fg_binary, cv2.MORPH_OPEN, kernel)
-        fg_mask_opened = cv2.morphologyEx(fg_mask_opened, cv2.MORPH_OPEN, kernel)
-        kernel = np.ones((10, 10), np.uint8)
+        kernel = np.ones((12, 12), np.uint8)
         fg_mask_closed = cv2.morphologyEx(fg_mask_opened, cv2.MORPH_CLOSE, kernel)
-        fg_mask_closed = cv2.morphologyEx(fg_mask_closed, cv2.MORPH_CLOSE, kernel)
 
-        # TODO: verify this
-        binary_frame = 255*np.stack([fg_mask_closed / 255, fg_mask_closed / 255, fg_mask_closed / 255], axis=-1)
+        binary_frame = np.stack([fg_mask_closed, fg_mask_closed, fg_mask_closed], axis=-1)
+        fg_frame = np.multiply(binary_frame / 255, cv2.cvtColor(cur_frame_rgb, cv2.COLOR_BGR2RGB)).astype(np.uint8)
         out_binary.write(binary_frame.astype(np.uint8))
+        out_extracted_fg.write(fg_frame)
 
         if DEBUG and np.mod(curr_frame, 30) == 0:
             plt.figure()
@@ -52,8 +51,7 @@ def background_subtraction(cap, video_data, output_path, time_window_size=70, su
             plt.subplot(2, 3, 5)
             plt.imshow(fg_mask_closed, cmap='gray')
             plt.subplot(2, 3, 6)
-            # todo: arrange this
-            plt.imshow(np.multiply(np.stack([fg_mask_closed / 255, fg_mask_closed / 255, fg_mask_closed / 255], axis=-1), cv2.cvtColor(cur_frame_rgb, cv2.COLOR_BGR2RGB)))
+            plt.imshow(fg_frame)
 
     out_binary.release()
     plt.show(block=False)
