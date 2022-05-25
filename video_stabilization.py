@@ -71,6 +71,7 @@ def calc_mean_mse_video(path: str) -> float:
 
 
 def compare_mse():
+
     input_video_path = os.path.join('Inputs', 'INPUT.avi')
     original_mse = calc_mean_mse_video(input_video_path)
     print(f"Mean MSE between frames for original video: {original_mse:.2f}")
@@ -79,8 +80,8 @@ def compare_mse():
     print(f"Mean MSE between frames for Stabilized output video: {stabilize_mse:.2f}")
 
 
-def stabilize_video(cap, video_data):
-    output_video_path = os.path.join('Output', 'stabilized.avi')
+def stabilize_video(cap, video_data, output_video_path):
+
     out_stabilized = cv2.VideoWriter(output_video_path, video_data['fourcc'], video_data['fps'], (video_data['w'],video_data['h']))
     ret, prev = cap.read()
     out_stabilized.write(prev)
@@ -121,4 +122,5 @@ def stabilize_video(cap, video_data):
 
     out_stabilized.release()
     compare_mse()
+
     return out_stabilized

@@ -1,104 +1,87 @@
-# TODO:
-#  1. extract the walking person - extracted.avi
-#  2. binary mask of the walking person - binary.avi
 import os
-from collections import deque
-
 import cv2
+import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib import pyplot as plt
+
+# TODO: delete all debugs
+DEBUG = True
 
 
-def substract_single_image(cur_original_image_rgb, cur_median_window_frame_rgb, threshold, debug=True):
-    cur_original_image_gray = cv2.cvtColor(cur_original_image_rgb, cv2.COLOR_BGR2GRAY)
-    cur_median_window_frame_gray = cv2.cvtColor(cur_median_window_frame_rgb, cv2.COLOR_BGR2GRAY)
-
-    blur_k_size=5
-    cur_original_image_gray_blur = cv2.blur(cur_original_image_gray,(blur_k_size,blur_k_size))
-    cur_median_window_frame_gray_blur = cv2.blur(cur_median_window_frame_gray,(blur_k_size,blur_k_size))
-    # cur_original_image_gray_blur = cv2.blur(cur_original_image_gray_blur,(blur_k_size,blur_k_size))
-    # cur_median_window_frame_gray_blur = cv2.blur(cur_median_window_frame_gray_blur,(blur_k_size,blur_k_size))
-
-    foreground_mask_binary = np.uint8(np.abs(np.int16(cur_original_image_gray_blur) - np.int16(cur_median_window_frame_gray_blur)) > threshold)*255
-
-    # processing the binary image
-    foreground_mask_binary = cv2.medianBlur(foreground_mask_binary, 3)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
-    foreground_mask_binary = cv2.erode(foreground_mask_binary, kernel, iterations=3)
-    foreground_mask_binary = cv2.medianBlur(foreground_mask_binary, 5)
-    foreground_mask_binary = cv2.dilate(foreground_mask_binary, kernel, iterations=7)
-
-    foreground_mask_binary = foreground_mask_binary > 150
-    idx = (foreground_mask_binary == 1)
-    cur_extracted_fg_frame_rgb = np.zeros(np.shape(cur_original_image_rgb))
-    cur_extracted_fg_frame_rgb[idx] = cur_original_image_rgb[idx]
-
-    cur_extracted_fg_frame_rgb = np.uint8(cur_extracted_fg_frame_rgb)
-    foreground_mask_binary = np.uint8(foreground_mask_binary)*255
-
-    # todo: delete this
-    if debug:
-        plt.figure()
-        plt.subplot(2,2,1)
-        plt.imshow(cur_original_image_gray_blur, cmap='gray')
-        plt.title('cur_original_image_gray_blur')
-        plt.subplot(2,2,2)
-        plt.imshow(cur_median_window_frame_gray_blur, cmap='gray')
-        plt.title('cur_median_window_frame_gray_blur')
-        plt.subplot(2,2,3)
-        plt.imshow(foreground_mask_binary, cmap='gray')
-        plt.title('foreground_mask_binary')
-        plt.subplot(2, 2, 4)
-        plt.imshow(cv2.cvtColor(cur_extracted_fg_frame_rgb, cv2.COLOR_BGR2RGB))
-        plt.title('cur_extracted_fg_frame_rgb')
-        plt.show(block=False)
-
-    return [foreground_mask_binary, cur_extracted_fg_frame_rgb]
-
-
-def background_subtraction(cap, video_data, output_path, time_window_size=70, subtraction_th=70):
+def background_subtraction(cap, video_data, output_path):
 
     out_extracted_fg = cv2.VideoWriter(os.path.join(output_path, 'foreground.avi'), video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
-    out_bg_only = cv2.VideoWriter(os.path.join(output_path, 'background.avi'), video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
     out_binary = cv2.VideoWriter(os.path.join(output_path, 'binary_foreground.avi'), video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
 
-    image_rgb_window = deque([np.zeros([video_data['h'], video_data['w'], 3], dtype='uint8')]*time_window_size)
-    red_window = deque([np.zeros([video_data['h'], video_data['w']])]*time_window_size)
-    green_window = deque([np.zeros([video_data['h'], video_data['w']])]*time_window_size)
-    blue_window = deque([np.zeros([video_data['h'], video_data['w']])]*time_window_size)
+    backSub = cv2.createBackgroundSubtractorKNN()
 
     curr_frame = 0
 
     while (cap.isOpened()):
-        print(f'BS - frame num {curr_frame} / {video_data["frames_num"]}')
+        if np.mod(curr_frame, 20) == 0:
+            print(f'BS - frame num {curr_frame} / {video_data["frames_num"]}')
         curr_frame += 1
         ret, cur_frame_rgb = cap.read()
         if ret is False:
             break
 
-        if curr_frame < time_window_size:
-            continue
+        fg_mask = backSub.apply(cur_frame_rgb)
+        fg_mask_processed = post_process_fg(fg_mask)
 
-        median_window_frame_red = np.median(np.array(red_window), axis=0)
-        median_window_frame_green = np.median(np.array(green_window), axis=0)
-        median_window_frame_blue = np.median(np.array(blue_window), axis=0)
+        fg_mask_processed = np.stack([fg_mask_processed, fg_mask_processed, fg_mask_processed], axis=-1)
+        fg_frame = np.multiply(fg_mask_processed / 255, cur_frame_rgb).astype(np.uint8)
+        out_binary.write(fg_mask_processed.astype(np.uint8))
+        out_extracted_fg.write(fg_frame)
 
-        cur_median_window_frame_rgb = np.uint8(np.zeros([video_data['h'], video_data['w'], 3]))
-        cur_median_window_frame_rgb[:, :, 0] = np.uint8(median_window_frame_blue)
-        cur_median_window_frame_rgb[:, :, 1] = np.uint8(median_window_frame_green)
-        cur_median_window_frame_rgb[:, :, 2] = np.uint8(median_window_frame_red)
+        if DEBUG and np.mod(curr_frame, 20) == 0:
+            plt.figure()
+            plt.subplot(2, 2, 1)
+            plt.imshow(cv2.cvtColor(cur_frame_rgb, cv2.COLOR_BGR2RGB))
+            plt.subplot(2, 2, 2)
+            plt.title('fg binary')
+            plt.imshow(fg_mask, cmap='gray')
+            plt.subplot(2, 2, 3)
+            plt.title('fg_mask_opened_1')
+            plt.imshow(fg_mask_processed, cmap='gray')
+            plt.subplot(2, 2, 4)
+            plt.title('fg frame')
+            plt.imshow(cv2.cvtColor(fg_frame, cv2.COLOR_BGR2RGB))
 
-        if curr_frame == time_window_size:
-            for cur_original_image in image_rgb_window:
-                cur_binary_fg_mask, cur_extracted_fg_frame_rgb = substract_single_image(cur_original_image, cur_median_window_frame_rgb, subtraction_th, debug=False)
-                out_extracted_fg.write(cur_extracted_fg_frame_rgb)
-                out_binary.write(cur_binary_fg_mask)
-                out_bg_only.write(cur_median_window_frame_rgb)
-            continue
+    out_binary.release()
+    out_extracted_fg.release()
 
-        cur_binary_fg_mask, cur_extracted_fg_frame_rgb = substract_single_image(cur_frame_rgb, cur_median_window_frame_rgb, threshold=100, debug=True)
-        out_extracted_fg.write(cur_extracted_fg_frame_rgb)
-        out_binary.write(cur_binary_fg_mask)
-        out_bg_only.write(cur_median_window_frame_rgb)
+    if DEBUG:
+        plt.show(block=False)
 
-    return cap
+    return out_extracted_fg
+
+
+def post_process_fg(fg_mask_gray):
+
+    a, fg_binary = cv2.threshold(fg_mask_gray, 200, 255, cv2.THRESH_BINARY)
+    kernel_5 = np.ones((5, 5), np.uint8)
+    kernel_8 = np.ones((8, 8), np.uint8)
+    kernel_10 = np.ones((10, 10), np.uint8)
+    kernel_12 = np.ones((12, 12), np.uint8)
+    fg_mask_opened_1 = cv2.morphologyEx(fg_binary, cv2.MORPH_OPEN, kernel_5)
+    fg_mask_closed_1 = cv2.morphologyEx(fg_mask_opened_1, cv2.MORPH_CLOSE, kernel_10)
+    fg_mask_opened_2 = cv2.morphologyEx(fg_mask_closed_1, cv2.MORPH_OPEN, kernel_8)
+    fg_mask_closed_2 = cv2.morphologyEx(fg_mask_opened_2, cv2.MORPH_CLOSE, kernel_12)
+
+    con_com = cv2.connectedComponentsWithStats(fg_mask_closed_2, 8, cv2.CV_32S)
+    largest_component = [0, 0, 0, 0]
+    largest_size = 0
+    for i in range(1, con_com[0]):
+        area = con_com[2][i, cv2.CC_STAT_AREA]
+        if area > largest_size:
+            x = con_com[2][i, cv2.CC_STAT_LEFT]
+            y = con_com[2][i, cv2.CC_STAT_TOP]
+            w = con_com[2][i, cv2.CC_STAT_WIDTH]
+            h = con_com[2][i, cv2.CC_STAT_HEIGHT]
+            largest_component = [x, y, w, h]
+            largest_size = area
+    fg_mask_closed_2[:largest_component[1], :] = 0
+    fg_mask_closed_2[largest_component[1] + largest_component[3]:, :] = 0
+    fg_mask_closed_2[:, :largest_component[0]] = 0
+    fg_mask_closed_2[:, largest_component[0] + largest_component[2]:] = 0
+
+    return fg_mask_closed_2

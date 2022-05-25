@@ -5,13 +5,14 @@ import time
 import json
 from collections import OrderedDict
 
-# from background_subtraction import background_subtraction
-from background_subtraction_opencv import background_subtraction
+from background_subtraction import background_subtraction
 from obj_tracking import track_obj
 from video_matting import video_matting
 from video_stabilization import stabilize_video
 
-#  TODO: add IDs
+# TODO: add IDs
+# TODO: change the functions not to have video outputs
+
 
 def main(args):
     timing_path = f'Output/timing.json'
@@ -19,21 +20,22 @@ def main(args):
 
     input_video_path = os.path.join(args.input_folder_path, 'INPUT.avi')
     new_background = os.path.join(args.input_folder_path, 'background.jpg')
-    # todo: change this not to be duplicate
     stabilized_video_path = os.path.join('Output', 'stabilized.avi')
 
-    # # load video and its data
-    # cap, video_data = load_video(input_video_path)
-    #
-    # # send to video stabilization
-    # start_time = time.time()
-    # stabilized_video = stabilize_video(cap, video_data)
-    # end_time = time.time()
-    # timing["time_to_stabilize"] = end_time - start_time
+    # load video and its data
+    cap, video_data = load_video(input_video_path)
+
+    # send to video stabilization
+    start_time = time.time()
+    stabilized_video = stabilize_video(cap, video_data, stabilized_video_path)
+    end_stabilized_time = time.time()
+    timing["time_to_stabilize"] = end_stabilized_time - start_time
 
     # subtract background
     stabilized_video_capture, video_data = load_video(stabilized_video_path)
     obj_video = background_subtraction(stabilized_video_capture, video_data, args.output_folder_path)
+    end_bs_time = time.time()
+    timing["time_to_binary"] = end_bs_time - end_stabilized_time
 
     # video matting
     new_background_video = video_matting(obj_video, new_background, video_data)
