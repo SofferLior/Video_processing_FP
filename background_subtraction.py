@@ -7,7 +7,7 @@ import numpy as np
 DEBUG = False
 
 
-def background_subtraction_first_frames(cap, video_data, output_path):
+def background_subtraction_first_frames(cap):
 
     output_first_binary_frames = []
     output_first_fg_frames = []
@@ -44,10 +44,10 @@ def background_subtraction_first_frames(cap, video_data, output_path):
     return output_first_binary_frames[::-1], output_first_fg_frames[::-1]
 
 
-def background_subtraction(cap, video_data, output_path, first_binary_frames, first_fg_frames):
+def background_subtraction(cap, video_data, out_extracted_fg_path, out_binary_path, first_binary_frames, first_fg_frames):
 
-    out_extracted_fg = cv2.VideoWriter(os.path.join(output_path, 'foreground.avi'), video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
-    out_binary = cv2.VideoWriter(os.path.join(output_path, 'binary_foreground.avi'), video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
+    out_extracted_fg = cv2.VideoWriter(out_extracted_fg_path, video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
+    out_binary = cv2.VideoWriter(out_binary_path, video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
 
     backSub = cv2.createBackgroundSubtractorKNN()
 
