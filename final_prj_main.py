@@ -5,7 +5,7 @@ import time
 import json
 from collections import OrderedDict
 
-from background_subtraction import background_subtraction
+from background_subtraction import background_subtraction, background_subtraction_first_frames
 from obj_tracking import track_obj
 from video_matting import video_matting
 from video_stabilization import stabilize_video
@@ -27,18 +27,20 @@ def main(args):
 
     # send to video stabilization
     start_time = time.time()
-    stabilized_video = stabilize_video(cap, video_data, stabilized_video_path)
+    stabilize_video(cap, video_data, stabilized_video_path)
     end_stabilized_time = time.time()
     timing["time_to_stabilize"] = end_stabilized_time - start_time
 
     # subtract background
     stabilized_video_capture, video_data = load_video(stabilized_video_path)
-    obj_video = background_subtraction(stabilized_video_capture, video_data, args.output_folder_path)
+    stabilized_video_capture_for_first_frames, video_data_for_first_frames = load_video(stabilized_video_path)
+    first_binary_frames, first_fg_frames = background_subtraction_first_frames(stabilized_video_capture_for_first_frames, video_data_for_first_frames, args.output_folder_path)
+    obj_video = background_subtraction(stabilized_video_capture, video_data, args.output_folder_path, first_binary_frames, first_fg_frames)
     end_bs_time = time.time()
     timing["time_to_binary"] = end_bs_time - end_stabilized_time
 
     # video matting
-    new_background_video = video_matting(obj_video, new_background, video_data)
+    video_matting(obj_video, new_background, video_data)
 
     # object tracking
     # TODO: change back to take the new_background_video

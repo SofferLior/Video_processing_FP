@@ -4,10 +4,47 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 # TODO: delete all debugs
-DEBUG = True
+DEBUG = False
 
 
-def background_subtraction(cap, video_data, output_path):
+def background_subtraction_first_frames(cap, video_data, output_path):
+
+    output_first_binary_frames = []
+    output_first_fg_frames = []
+    backSub = cv2.createBackgroundSubtractorKNN()
+    input_frames_for_bs = []
+
+    for i in range(100):
+        ret, cur_frame_rgb = cap.read()
+        input_frames_for_bs.append(cur_frame_rgb)
+
+    for ii, frame in enumerate(input_frames_for_bs[::-1]):
+
+        fg_mask = backSub.apply(frame)
+        fg_mask_processed = post_process_fg(fg_mask)
+        fg_mask_processed = np.stack([fg_mask_processed, fg_mask_processed, fg_mask_processed], axis=-1)
+        fg_frame = np.multiply(fg_mask_processed / 255, frame).astype(np.uint8)
+        output_first_fg_frames.append(fg_frame)
+        output_first_binary_frames.append(fg_mask_processed)
+
+        if DEBUG and np.mod(ii, 5) == 0:
+            plt.figure()
+            plt.subplot(2, 2, 1)
+            plt.imshow(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+            plt.subplot(2, 2, 2)
+            plt.title('fg binary')
+            plt.imshow(fg_mask, cmap='gray')
+            plt.subplot(2, 2, 3)
+            plt.title('fg_mask_opened_1')
+            plt.imshow(fg_mask_processed, cmap='gray')
+            plt.subplot(2, 2, 4)
+            plt.title('fg frame')
+            plt.imshow(cv2.cvtColor(fg_frame, cv2.COLOR_BGR2RGB))
+
+    return output_first_binary_frames[::-1], output_first_fg_frames[::-1]
+
+
+def background_subtraction(cap, video_data, output_path, first_binary_frames, first_fg_frames):
 
     out_extracted_fg = cv2.VideoWriter(os.path.join(output_path, 'foreground.avi'), video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
     out_binary = cv2.VideoWriter(os.path.join(output_path, 'binary_foreground.avi'), video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']), True)
@@ -29,6 +66,10 @@ def background_subtraction(cap, video_data, output_path):
 
         fg_mask_processed = np.stack([fg_mask_processed, fg_mask_processed, fg_mask_processed], axis=-1)
         fg_frame = np.multiply(fg_mask_processed / 255, cur_frame_rgb).astype(np.uint8)
+        if curr_frame < 20:
+            out_binary.write(first_binary_frames[curr_frame])
+            out_extracted_fg.write(first_fg_frames[curr_frame])
+            continue
         out_binary.write(fg_mask_processed.astype(np.uint8))
         out_extracted_fg.write(fg_frame)
 
