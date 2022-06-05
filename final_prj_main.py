@@ -5,7 +5,7 @@ import time
 import json
 from collections import OrderedDict
 
-from background_subtraction import background_subtraction
+from background_subtraction import background_subtraction, background_subtraction_first_frames
 from obj_tracking import track_obj
 from video_matting import video_matting
 from video_stabilization import stabilize_video
@@ -19,26 +19,35 @@ def main(args):
     timing = OrderedDict()
 
     input_video_path = os.path.join(args.input_folder_path, 'INPUT.avi')
-    new_background = os.path.join(args.input_folder_path, 'background.jpg')
+    new_background_video_path = os.path.join(args.input_folder_path, 'background.jpg')
     stabilized_video_path = os.path.join('Output', 'stabilized.avi')
+    extracted_fg_path = os.path.join(args.output_folder_path, 'foreground.avi')
+    binary_path = os.path.join(args.output_folder_path, 'binary_foreground.avi')
+    # TODO: matted_video path should be corrected
+    matted_video_path = os.path.join(args.output_folder_path, 'matted_video.avi')
+
 
     # load video and its data
     cap, video_data = load_video(input_video_path)
 
     # send to video stabilization
     start_time = time.time()
-    stabilized_video = stabilize_video(cap, video_data, stabilized_video_path)
+    stabilize_video(cap, video_data, stabilized_video_path)
     end_stabilized_time = time.time()
     timing["time_to_stabilize"] = end_stabilized_time - start_time
 
     # subtract background
     stabilized_video_capture, video_data = load_video(stabilized_video_path)
-    obj_video = background_subtraction(stabilized_video_capture, video_data, args.output_folder_path)
+    stabilized_video_capture_for_first_frames, _ = load_video(stabilized_video_path)
+    first_binary_frames, first_fg_frames = background_subtraction_first_frames(stabilized_video_capture_for_first_frames)
+    background_subtraction(stabilized_video_capture, video_data, extracted_fg_path, binary_path, first_binary_frames, first_fg_frames)
     end_bs_time = time.time()
     timing["time_to_binary"] = end_bs_time - end_stabilized_time
 
     # video matting
-    new_background_video = video_matting(obj_video, new_background, video_data)
+    fg_video, fg_video_data = load_video(extracted_fg_path)
+    new_background, new_bg_video_data = load_video(new_background_video_path)
+    video_matting(fg_video, fg_video_data, new_background, new_bg_video_data, matted_video_path)
 
     # object tracking
     # TODO: change back to take the new_background_video
