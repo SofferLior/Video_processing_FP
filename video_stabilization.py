@@ -1,15 +1,13 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-import os
-
 
 debug_flag = False
 
 
 def find_features_and_descriptor(grey_im):
     # goodFeaturesToTrack Params: maximum number of features, quality level, minimum possible Euclidean distance
-    features = cv2.goodFeaturesToTrack(grey_im, 500, 0.2, 20)
+    features = cv2.goodFeaturesToTrack(grey_im, 500, 0.01, 20,3)
     features=features.reshape(features.shape[0], 2)
     if debug_flag:
         plt.figure()
@@ -18,7 +16,7 @@ def find_features_and_descriptor(grey_im):
         plt.show(False)
     sift = cv2.SIFT_create()
     kp = [cv2.KeyPoint(f[0], f[1], 1) for f in features]
-    kp, des = sift.compute(grey_im, kp)
+    kp, des = sift.compute(grey_im, kp) #sift.detectAndCompute(grey_im, None) #
     return kp, des
 
 
@@ -70,18 +68,15 @@ def calc_mean_mse_video(path: str) -> float:
     return mean_mse
 
 
-def compare_mse():
-
-    input_video_path = os.path.join('Inputs', 'INPUT.avi')
-    original_mse = calc_mean_mse_video(input_video_path)
+def compare_mse(input_path, output_video_path):
+    original_mse = calc_mean_mse_video(input_path)
     print(f"Mean MSE between frames for original video: {original_mse:.2f}")
-    output_video_path = os.path.join('Output', 'stabilized.avi')
     stabilize_mse = calc_mean_mse_video(output_video_path)
     print(f"Mean MSE between frames for Stabilized output video: {stabilize_mse:.2f}")
 
 
-def stabilize_video(cap, video_data, output_video_path):
-
+def stabilize_video(input_path, video_data, output_video_path):
+    cap = cv2.VideoCapture(input_path)
     out_stabilized = cv2.VideoWriter(output_video_path, video_data['fourcc'], video_data['fps'], (video_data['w'],video_data['h']))
     ret, prev = cap.read()
     out_stabilized.write(prev)
@@ -100,16 +95,20 @@ def stabilize_video(cap, video_data, output_video_path):
             cur_kp, cur_des = find_features_and_descriptor(cur_grey)
 
             # 3. Match descriptors
-            matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
-            matches = matcher.match(prev_des, cur_des)
-            matches = sorted(matches, key= lambda x:x.distance)
+            matcher = cv2.BFMatcher() #cv2.NORM_L2, crossCheck=True)
+            matches = matcher.knnMatch(prev_des, cur_des,2)
+            good_matches = []
+            for p,c in matches:
+                if p.distance < 0.8*c.distance:
+                    good_matches.append(p)
+            #matches = sorted(matches, key= lambda x:x.distance)
             if debug_flag:
                 matches_im = cv2.drawMatches(prev_grey,prev_kp,cur_grey,cur_kp,matches[:100],None, flags=2)
                 plt.figure()
                 plt.imshow(matches_im)
                 plt.show()
 
-            prev_pnt, cur_pnt = rearrange_points_according_to_matches(prev_kp, cur_kp, matches)
+            prev_pnt, cur_pnt = rearrange_points_according_to_matches(prev_kp, cur_kp, good_matches)
             #  TODO: need to check this TH on other videos to make sure it is robust
             trans, inliers = cv2.estimateAffine2D(cur_pnt,prev_pnt, method=cv2.RANSAC, ransacReprojThreshold=2)
             H_srt = convert_to_srt(trans)
@@ -121,6 +120,6 @@ def stabilize_video(cap, video_data, output_video_path):
             prev_kp, prev_des = cur_kp, cur_des
 
     out_stabilized.release()
-    compare_mse()
+    compare_mse(input_path,output_video_path)
 
     return out_stabilized
