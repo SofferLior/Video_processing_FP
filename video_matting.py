@@ -7,22 +7,26 @@ from scipy import stats
 import GeodisTK
 
 
-#TODO: this is a copy from refrence
+'''#TODO: this is a copy from refrence
 def choose_random_idx(mask,number_of_choices=200):
     idx = np.where(mask == 0)
     ran_choice = np.random.choice(len(idx[0]),number_of_choices)
     return np.column_stack((idx[0][ran_choice],idx[1][ran_choice]))
 
 
-def calc_likelihood(rgb_image, ind, band_idx):
-    idx = choose_random_idx(ind)
+def estimate_pdf(original_frame, indices, bw_method):
+    omega_f_values = original_frame[indices[:, 0], indices[:, 1], :]
+    pdf = stats.gaussian_kde(omega_f_values.T, bw_method=bw_method)
+    return lambda x: pdf(x.T)
+'''
 
-    value = rgb_image[idx[:,0], idx[:,1], :]
+def calc_kde(rgb_image, idx):
+    #TODO
+    rand_choice = np.random.choice(len(idx[0]), 200)
+    rand_idx = np.column_stack((idx[0][rand_choice],idx[1][rand_choice]))
+    value = rgb_image[rand_idx[:,0], rand_idx[:,1], :]
     kde = stats.gaussian_kde(value.T, bw_method=1)
-
-    likelihood = kde(rgb_image[band_idx].T)
-
-    return likelihood
+    return kde
 
 
 def calc_distance_mag(yuv_image, trimap):
@@ -64,30 +68,28 @@ def get_alpha(rgb_image,trimap, r=2):
     norm_f_dis_map = foreground_distance_map / (foreground_distance_map + background_distance_map)
     norm_b_dis_map = 1- norm_f_dis_map
 
-    band = np.abs(norm_b_dis_map-norm_f_dis_map)
-    band[band == 1] = 0
-    band[band > 0] = 1
-    if 0:
-        gray = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-        new_im = trimap.copy()
-        new_im[trimap == 255] = gray[trimap == 255]
-        new_im[trimap == 0] = gray[trimap == 0]
-        plt.imshow(new_im)
+    band = norm_b_dis_map-norm_f_dis_map
+    background_idx= np.where(band < -0.99)
+    foreground_idx = np.where(band > 0.99)
 
-    band_idx = np.where(band == 1)
+    temp_band = np.zeros_like(band)
+    temp_band[foreground_idx] = 1
+    temp_band[background_idx] = -1
+    band_idx = np.where(temp_band == 0)
 
-    decided_f_mask = (norm_f_dis_map < norm_b_dis_map-0.99).astype('uint8')
-    decided_b_mask = (norm_b_dis_map>= norm_f_dis_map - 0.99).astype('uint8')
+    kde_f = calc_kde(rgb_image[top_left_y:top_right_x, top_left_x: top_right_y], foreground_idx)
+    kde_b = calc_kde(rgb_image[top_left_y:top_right_x, top_left_x: top_right_y], background_idx)
 
-    likelihood_map_f = calc_likelihood(yuv_image[top_left_y:top_right_x, top_left_x: top_right_y], decided_f_mask, band_idx)
-    likelihood_map_b = calc_likelihood(yuv_image[top_left_y:top_right_x, top_left_x: top_right_y], decided_b_mask, band_idx)
+    w_f = np.multiply(np.power(foreground_distance_map[band_idx], -r), kde_f(rgb_image[top_left_y:top_right_x, top_left_x: top_right_y][band_idx].T))
+    w_b = np.multiply(np.power(background_distance_map[band_idx], -r), kde_b(rgb_image[top_left_y:top_right_x, top_left_x: top_right_y][band_idx].T))
+    temp_alpha = np.multiply(w_f, np.power(w_f + w_b, -1))
 
-    w_f = np.multiply(np.power(foreground_distance_map[band_idx], -r), likelihood_map_f)
-    w_b = np.multiply(np.power(background_distance_map[band_idx], -r), likelihood_map_b)
-    temp_alpha = 1000*np.multiply(w_f, np.power(w_f + w_b, -1))
+    cropped_alpha = np.zeros_like(cropped_trimap).astype(np.float)
+    cropped_alpha[foreground_idx] = 1
+    cropped_alpha[band_idx] = temp_alpha
 
-    alpha = trimap.copy()
-    alpha[top_left_y:top_right_x, top_left_x: top_right_y][band_idx] = temp_alpha
+    alpha = trimap.copy().astype(np.float)
+    alpha[top_left_y:top_right_x, top_left_x: top_right_y] = cropped_alpha
 
     return alpha
 
@@ -132,6 +134,57 @@ def get_trimap(image, size, erosion=False):
     return remake
 
 
+'''def choose_indices_for_foreground(mask, number_of_choices):
+    indices = np.where(mask == 1)
+    if len(indices[0]) == 0:
+        return np.column_stack((indices[0],indices[1]))
+    indices_choices = np.random.choice(len(indices[0]), number_of_choices)
+    return np.column_stack((indices[0][indices_choices], indices[1][indices_choices]))
+'''
+
+'''def choose_indices_for_background(mask, number_of_choices):
+    indices = np.where(mask == 0)
+    if len(indices[0]) == 0:
+        return np.column_stack((indices[0],indices[1]))
+    indices_choices = np.random.choice(len(indices[0]), number_of_choices)
+    return np.column_stack((indices[0][indices_choices], indices[1][indices_choices]))
+
+
+def choose_indices_for_foreground(mask, number_of_choices):
+    indices = np.where(mask == 1)
+    if len(indices[0]) == 0:
+        return np.column_stack((indices[0],indices[1]))
+    indices_choices = np.random.choice(len(indices[0]), number_of_choices)
+    return np.column_stack((indices[0][indices_choices], indices[1][indices_choices]))
+'''
+
+'''def COPIED_GET_ALPHA(rgb_image,trimap, r=2):
+    EPSILON_NARROW_BAND = 0.99
+    KDE_BW = 1
+    yuv_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2YUV)
+    top_left_x, top_left_y, top_right_x, top_right_y = find_small_area(trimap)
+
+    cropped_trimap = trimap.copy()[top_left_y:top_right_x, top_left_x: top_right_y]
+    # calculate distance map in a small area:
+    foreground_distance_map, background_distance_map = calc_distance_mag(yuv_image[top_left_y:top_right_x, top_left_x: top_right_y], cropped_trimap)
+
+    smaller_foreground_distance_map = foreground_distance_map / (foreground_distance_map + background_distance_map)
+    smaller_background_distance_map = 1 - smaller_foreground_distance_map
+    smaller_narrow_band_mask = (
+                np.abs(smaller_foreground_distance_map - smaller_background_distance_map) < EPSILON_NARROW_BAND).astype(
+        np.uint8)
+    smaller_narrow_band_mask_indices = np.where(smaller_narrow_band_mask == 1)
+
+    smaller_decided_foreground_mask = (
+                smaller_foreground_distance_map < smaller_background_distance_map - EPSILON_NARROW_BAND).astype(
+        np.uint8)
+    smaller_decided_background_mask = (
+                smaller_background_distance_map >= smaller_foreground_distance_map - EPSILON_NARROW_BAND).astype(
+        np.uint8)
+    Building KDEs for foreground & background to calculate priors for alpha calculation'''
+
+
+
 def video_matting(input_path, binary_path, new_background_path, video_data):
     cap = cv2.VideoCapture(input_path)
     binary_cap = cv2.VideoCapture(binary_path)
@@ -148,7 +201,6 @@ def video_matting(input_path, binary_path, new_background_path, video_data):
         print(f'frame {curr_frame}')
 
         cur_frame_bin_grey = cv2.cvtColor(cur_binary_frame, cv2.COLOR_BGR2GRAY)
-        cur_frame_yuv_image = cv2.cvtColor(cur_frame_rgb, cv2.COLOR_BGR2YUV)
 
         # Create Trimap
         trimap = get_trimap(cur_frame_bin_grey, 5, erosion=5)
@@ -164,18 +216,16 @@ def video_matting(input_path, binary_path, new_background_path, video_data):
         alpha_map = get_alpha(cur_frame_rgb, trimap)
         print('Calculated Alpha map')
 
-        alpha = alpha_map.astype(float)/255
-
-        alpha_rgb = np.zeros_like(cur_frame_rgb)
+        alpha_rgb = np.zeros_like(cur_frame_rgb).astype(float)
         for i in range(0, 3):
-            alpha_rgb[:, :, i] = alpha[:]
+            alpha_rgb[:, :, i] = alpha_map[:]
 
-        f = np.multiply(alpha_rgb, cur_frame_rgb.astype(float))
-        b = np.multiply(1.0-alpha_rgb, new_background_image.astype(float))
+        f = np.multiply(alpha_rgb, cur_frame_rgb)
+        b = np.multiply(1.0-alpha_rgb, new_background_image)
 
         frame_matted = cv2.add(f, b).astype('uint8')
 
-        if curr_frame%10 == 0:
+        if 0:
             plt.figure()
             plt.subplot(1,3,1)
             plt.imshow(cur_frame_rgb)
