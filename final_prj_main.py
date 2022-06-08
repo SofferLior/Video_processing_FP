@@ -20,39 +20,40 @@ def main(args):
 
     input_video_path = os.path.join(args.input_folder_path, 'INPUT.avi')
     new_background_video_path = os.path.join(args.input_folder_path, 'background.jpg')
-    stabilized_video_path = os.path.join('Output', 'stabilized.avi')
-    extracted_fg_path = os.path.join(args.output_folder_path, 'foreground.avi')
-    binary_path = os.path.join(args.output_folder_path, 'binary_foreground.avi')
-    # TODO: matted_video path should be corrected
-    matted_video_path = os.path.join(args.output_folder_path, 'matted_video.avi')
+    stabilized_video_path = os.path.join(args.output_folder_path, 'stabilized.avi')
+    extracted_fg_path = os.path.join(args.output_folder_path, 'extracted.avi')
+    binary_path = os.path.join(args.output_folder_path, 'binary.avi')
+    matted_video_path = os.path.join(args.output_folder_path, 'matted.avi')
+    alpha_video_path = os.path.join(args.output_folder_path, 'alpha.avi')
+    output_video_path = os.path.join(args.output_folder_path, 'OUTPUT.avi')
 
-
-    # load video and its data
-    cap, video_data = load_video(input_video_path)
+    # get input video data
+    video_data = get_video_params(input_video_path)
 
     # send to video stabilization
     start_time = time.time()
-    stabilize_video(cap, video_data, stabilized_video_path)
+    #TODO: fixed this
+    temp_stabilized_video_path = os.path.join('Output', 'temp_stabilized.avi')
+    stabilize_video(input_video_path, video_data, temp_stabilized_video_path)
+    stabilize_video(temp_stabilized_video_path, video_data, stabilized_video_path)
     end_stabilized_time = time.time()
     timing["time_to_stabilize"] = end_stabilized_time - start_time
 
     # subtract background
-    stabilized_video_capture, video_data = load_video(stabilized_video_path)
-    stabilized_video_capture_for_first_frames, _ = load_video(stabilized_video_path)
-    first_binary_frames, first_fg_frames = background_subtraction_first_frames(stabilized_video_capture_for_first_frames)
-    background_subtraction(stabilized_video_capture, video_data, extracted_fg_path, binary_path, first_binary_frames, first_fg_frames)
+    first_binary_frames, first_fg_frames = background_subtraction_first_frames(stabilized_video_path)
+    background_subtraction(stabilized_video_path, video_data, extracted_fg_path, binary_path, first_binary_frames, first_fg_frames)
     end_bs_time = time.time()
     timing["time_to_binary"] = end_bs_time - end_stabilized_time
 
     # video matting
-    fg_video, fg_video_data = load_video(extracted_fg_path)
-    new_background, new_bg_video_data = load_video(new_background_video_path)
-    video_matting(fg_video, fg_video_data, new_background, new_bg_video_data, matted_video_path)
+    video_matting(stabilized_video_path, binary_path, new_background_video_path, matted_video_path, alpha_video_path, video_data)
+    end_matting_time = time.time()
+    timing["time_to_matting"] = end_matting_time - end_bs_time
 
     # object tracking
-    # TODO: change back to take the new_background_video
-    binary_video_path = os.path.join('Output', 'binary_foreground.avi')
-    video_w_tracking = track_obj(stabilized_video_path, binary_video_path,  video_data)
+    track_obj(matted_video_path, binary_path, output_video_path, video_data)
+    end_tracking_time = time.time()
+    timing["time_to_output"] = end_tracking_time - end_matting_time
 
     with open(timing_path, 'w') as f:
         json.dump(timing, f, indent=4)
@@ -65,7 +66,7 @@ def main(args):
     print('Bye')
 
 
-def load_video(input_video_path):
+def get_video_params(input_video_path):
     # Read input video
     cap = cv2.VideoCapture(input_video_path)
 
@@ -83,7 +84,7 @@ def load_video(input_video_path):
     # Define the codec for output video
     video_data['fourcc'] = cv2.VideoWriter_fourcc('M', 'J', 'P', 'G')
 
-    return cap, video_data
+    return video_data
 
 
 #  TODO: delete this function

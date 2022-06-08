@@ -7,19 +7,6 @@ from scipy import stats
 import GeodisTK
 
 
-'''#TODO: this is a copy from refrence
-def choose_random_idx(mask,number_of_choices=200):
-    idx = np.where(mask == 0)
-    ran_choice = np.random.choice(len(idx[0]),number_of_choices)
-    return np.column_stack((idx[0][ran_choice],idx[1][ran_choice]))
-
-
-def estimate_pdf(original_frame, indices, bw_method):
-    omega_f_values = original_frame[indices[:, 0], indices[:, 1], :]
-    pdf = stats.gaussian_kde(omega_f_values.T, bw_method=bw_method)
-    return lambda x: pdf(x.T)
-'''
-
 def calc_kde(rgb_image, idx):
     #TODO
     rand_choice = np.random.choice(len(idx[0]), 200)
@@ -134,63 +121,12 @@ def get_trimap(image, size, erosion=False):
     return remake
 
 
-'''def choose_indices_for_foreground(mask, number_of_choices):
-    indices = np.where(mask == 1)
-    if len(indices[0]) == 0:
-        return np.column_stack((indices[0],indices[1]))
-    indices_choices = np.random.choice(len(indices[0]), number_of_choices)
-    return np.column_stack((indices[0][indices_choices], indices[1][indices_choices]))
-'''
-
-'''def choose_indices_for_background(mask, number_of_choices):
-    indices = np.where(mask == 0)
-    if len(indices[0]) == 0:
-        return np.column_stack((indices[0],indices[1]))
-    indices_choices = np.random.choice(len(indices[0]), number_of_choices)
-    return np.column_stack((indices[0][indices_choices], indices[1][indices_choices]))
-
-
-def choose_indices_for_foreground(mask, number_of_choices):
-    indices = np.where(mask == 1)
-    if len(indices[0]) == 0:
-        return np.column_stack((indices[0],indices[1]))
-    indices_choices = np.random.choice(len(indices[0]), number_of_choices)
-    return np.column_stack((indices[0][indices_choices], indices[1][indices_choices]))
-'''
-
-'''def COPIED_GET_ALPHA(rgb_image,trimap, r=2):
-    EPSILON_NARROW_BAND = 0.99
-    KDE_BW = 1
-    yuv_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2YUV)
-    top_left_x, top_left_y, top_right_x, top_right_y = find_small_area(trimap)
-
-    cropped_trimap = trimap.copy()[top_left_y:top_right_x, top_left_x: top_right_y]
-    # calculate distance map in a small area:
-    foreground_distance_map, background_distance_map = calc_distance_mag(yuv_image[top_left_y:top_right_x, top_left_x: top_right_y], cropped_trimap)
-
-    smaller_foreground_distance_map = foreground_distance_map / (foreground_distance_map + background_distance_map)
-    smaller_background_distance_map = 1 - smaller_foreground_distance_map
-    smaller_narrow_band_mask = (
-                np.abs(smaller_foreground_distance_map - smaller_background_distance_map) < EPSILON_NARROW_BAND).astype(
-        np.uint8)
-    smaller_narrow_band_mask_indices = np.where(smaller_narrow_band_mask == 1)
-
-    smaller_decided_foreground_mask = (
-                smaller_foreground_distance_map < smaller_background_distance_map - EPSILON_NARROW_BAND).astype(
-        np.uint8)
-    smaller_decided_background_mask = (
-                smaller_background_distance_map >= smaller_foreground_distance_map - EPSILON_NARROW_BAND).astype(
-        np.uint8)
-    Building KDEs for foreground & background to calculate priors for alpha calculation'''
-
-
-
-def video_matting(input_path, binary_path, new_background_path, video_data):
+def video_matting(input_path, binary_path, new_background_path, out_matted_path, out_alpha_path, video_data):
     cap = cv2.VideoCapture(input_path)
     binary_cap = cv2.VideoCapture(binary_path)
-    out_tracked = cv2.VideoWriter(os.path.join('Output', 'matting.avi'), video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']))
+    out_tracked = cv2.VideoWriter(out_matted_path, video_data['fourcc'], video_data['fps'], (video_data['w'], video_data['h']))
     new_background_image = cv2.imread(new_background_path)
-
+    #TODO: resize backgorund image
     curr_frame = 0
     while cap.isOpened():
         ret, cur_frame_rgb = cap.read()
