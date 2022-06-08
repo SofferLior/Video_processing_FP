@@ -24,6 +24,8 @@ def track_obj(input_path, binary_path, output_path, video_data):
         grey_binary = cv2.cvtColor(cur_binary_frame, cv2.COLOR_RGB2GRAY)
         x, y, w, h = cv2.boundingRect(grey_binary)
         tracking[curr_frame] = [int(x + w/2), int(y + h/2), int(w/2), int(h/2)]
+        out_tracked.write(draw_rectangle(cur_frame_rgb, x, y, w, h))
+
     out_tracked.release()
 
     return tracking
