@@ -16,8 +16,8 @@ ID2 = "203764170"
 
 
 def main(args):
-    timing_path = os.path.join(args.output_folder_path, "timing_{0}_{1}.json".format(ID1, ID2))
-    tracking_path = os.path.join(args.output_folder_path, "tracking_{0}_{1}.json".format(ID1, ID2))
+    timing_path = os.path.join(args.output_folder_path, "timing.json".format(ID1, ID2))
+    tracking_path = os.path.join(args.output_folder_path, "tracking.json".format(ID1, ID2))
     timing = OrderedDict()
 
     input_video_path = os.path.join(args.input_folder_path, 'INPUT.avi')
@@ -54,7 +54,7 @@ def main(args):
 
     video_matting(stabilized_video_path, alpha_video_path, new_background_image_path, matted_video_path, video_data)
     end_matting_time = time.time()
-    timing["time_to_matting"] = int(end_matting_time - end_alpha_time)
+    timing["time_to_matted"] = int(end_matting_time - end_alpha_time)
     print('Complete Matting')
 
     # object tracking

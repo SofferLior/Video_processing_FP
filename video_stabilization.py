@@ -39,42 +39,6 @@ def convert_to_srt(trans):
     return np.hstack([trans.T,[[0],[0],[1]]])
 
 
-def calc_mean_mse_video(path: str) -> float:
-    """Calculate the mean MSE across all frames.
-
-    The mean MSE is computed between every two consecutive frames in the video.
-
-    Args:
-        path: str. Path to the video.
-
-    Returns:
-        mean_mse: float. The mean MSE.
-    """
-    input_cap = cv2.VideoCapture(path)
-    frame_amount = int(input_cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    input_cap.grab()
-    # extract first frame
-    prev_frame = input_cap.retrieve()[1]
-    # convert to greyscale
-    prev_frame = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
-    mse = 0.0
-    for i in range(1, frame_amount):
-        input_cap.grab()
-        frame = input_cap.retrieve()[1]  # grab next frame
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        mse += ((frame - prev_frame) ** 2).mean()
-        prev_frame = frame
-    mean_mse = mse / (frame_amount - 1)
-    return mean_mse
-
-
-def compare_mse(input_path, output_video_path):
-    original_mse = calc_mean_mse_video(input_path)
-    print(f"Mean MSE between frames for original video: {original_mse:.2f}")
-    stabilize_mse = calc_mean_mse_video(output_video_path)
-    print(f"Mean MSE between frames for Stabilized output video: {stabilize_mse:.2f}")
-
-
 def stabilize_video(input_path, video_data, output_video_path):
     cap = cv2.VideoCapture(input_path)
     out_stabilized = cv2.VideoWriter(output_video_path, video_data['fourcc'], video_data['fps'], (video_data['w'],video_data['h']))
@@ -115,6 +79,4 @@ def stabilize_video(input_path, video_data, output_video_path):
             prev_kp, prev_des = cur_kp, cur_des
 
     out_stabilized.release()
-    compare_mse(input_path,output_video_path)
-
     return out_stabilized
