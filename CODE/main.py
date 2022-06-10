@@ -16,6 +16,8 @@ ID2 = "203764170"
 
 
 def main(args):
+
+    print("---Starting---")
     timing_path = os.path.join(args.output_folder_path, "timing.json".format(ID1, ID2))
     tracking_path = os.path.join(args.output_folder_path, "tracking.json".format(ID1, ID2))
     timing = OrderedDict()
@@ -95,7 +97,7 @@ def get_video_params(input_video_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_folder_path', help='path to the input folder', default='Inputs')
-    parser.add_argument('--output_folder_path', help='path to the output folder to save processed video', default='Output')
+    parser.add_argument('--input_folder_path', help='path to the input folder', default='../Input')
+    parser.add_argument('--output_folder_path', help='path to the output folder to save processed video', default='../Outputs')
     args = parser.parse_args()
     main(args)
