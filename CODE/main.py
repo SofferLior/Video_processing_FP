@@ -97,7 +97,7 @@ def get_video_params(input_video_path):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_folder_path', help='path to the input folder', default='../Input')
-    parser.add_argument('--output_folder_path', help='path to the output folder to save processed video', default='../Outputs')
+    parser.add_argument('--input_folder_path', help='path to the input folder', default='Input')
+    parser.add_argument('--output_folder_path', help='path to the output folder to save processed video', default='Outputs')
     args = parser.parse_args()
     main(args)
