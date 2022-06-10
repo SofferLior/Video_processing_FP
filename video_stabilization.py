@@ -7,7 +7,7 @@ debug_flag = False
 
 def find_features_and_descriptor(grey_im):
     # goodFeaturesToTrack Params: maximum number of features, quality level, minimum possible Euclidean distance
-    features = cv2.goodFeaturesToTrack(grey_im, 500, 0.01, 20,3)
+    features = cv2.goodFeaturesToTrack(grey_im, 500, 0.01, 20)
     features=features.reshape(features.shape[0], 2)
     if debug_flag:
         plt.figure()
@@ -16,7 +16,7 @@ def find_features_and_descriptor(grey_im):
         plt.show(False)
     sift = cv2.SIFT_create()
     kp = [cv2.KeyPoint(f[0], f[1], 1) for f in features]
-    kp, des = sift.compute(grey_im, kp) #sift.detectAndCompute(grey_im, None) #
+    kp, des = sift.compute(grey_im, kp)
     return kp, des
 
 
@@ -95,21 +95,16 @@ def stabilize_video(input_path, video_data, output_video_path):
             cur_kp, cur_des = find_features_and_descriptor(cur_grey)
 
             # 3. Match descriptors
-            matcher = cv2.BFMatcher() #cv2.NORM_L2, crossCheck=True)
-            matches = matcher.knnMatch(prev_des, cur_des,2)
-            good_matches = []
-            for p,c in matches:
-                if p.distance < 0.8*c.distance:
-                    good_matches.append(p)
-            #matches = sorted(matches, key= lambda x:x.distance)
+            matcher = cv2.BFMatcher(cv2.NORM_L2, crossCheck=True)
+            matches = matcher.match(prev_des, cur_des)
+            matches = sorted(matches, key= lambda x:x.distance)
             if debug_flag:
                 matches_im = cv2.drawMatches(prev_grey,prev_kp,cur_grey,cur_kp,matches[:100],None, flags=2)
                 plt.figure()
                 plt.imshow(matches_im)
                 plt.show()
 
-            prev_pnt, cur_pnt = rearrange_points_according_to_matches(prev_kp, cur_kp, good_matches)
-            #  TODO: need to check this TH on other videos to make sure it is robust
+            prev_pnt, cur_pnt = rearrange_points_according_to_matches(prev_kp, cur_kp, matches)
             trans, inliers = cv2.estimateAffine2D(cur_pnt,prev_pnt, method=cv2.RANSAC, ransacReprojThreshold=2)
             H_srt = convert_to_srt(trans)
             H_cum = np.dot(H_srt,H_cum)
